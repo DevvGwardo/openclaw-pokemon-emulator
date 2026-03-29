@@ -1,94 +1,98 @@
 ---
 name: pokemon-emulator
-description: Play Pokemon, Game Boy (GB), Game Boy Color (GBC), and Game Boy Advance (GBA) games via emulation. Provides scripts to launch games, manage save states, capture screenshots, and control gameplay through PyBoy (GB/GBC) and subprocess-based GBA emulators.
+description: "Play Pokemon and similar retro handheld games through Python-based and subprocess-based emulation on your machine. Provides scripts to launch games, manage save states, capture screenshots, and control gameplay through PyBoy (GB/GBC) and mGBA/VBA-M (GBA). Triggers when user wants to: play Pokemon games, play Game Boy/Color/Advance games, automate gameplay, capture screenshots, manage save states."
 ---
 
 # Pokemon Emulator Skill
 
-Play Pokemon and similar retro handheld games through Python-based and subprocess-based emulation on your machine.
+Play Pokemon and similar retro handheld games through Python-based and subprocess-based emulation.
 
 ## When to Use
 
 Activate this skill when the user wants to:
-
-- Play Pokemon games (any generation on GB/GBC/GBA)
-- Play other Game Boy or Game Boy Color games
-- Play Game Boy Advance games
-- Manage save states during gameplay
+- Play Pokemon games (any generation: GB/GBC/GBA)
+- Play other Game Boy or Game Boy Color games via PyBoy
+- Play Game Boy Advance games via mGBA or VBA-M
+- Automate gameplay (AI-driven button presses)
 - Capture screenshots or clips from games
-- Configure emulator settings per game
+- Manage save states during gameplay
 
 ## Available Emulators
 
-### PyBoy (GB/GBC)
+### PyBoy (GB/GBC) — Python-native
 
-Python library for Game Boy emulation. Lightweight, scriptable, good for automation.
+Python library for Game Boy / Game Boy Color emulation. Scriptable, no external binary.
 
-**Requirements:** `pip install pyboy`
+**Install:** `pip install pyboy pysdl2-dll numpy`
+**Script:** `scripts/pyboy_interface.py`
 
-**Location:** `scripts/pyboy/` — contains launch and control scripts
+```python
+from pyboy_interface import PyBoyGame, A, B, UP, DOWN
 
-### GBA via Subprocess
-
-Game Boy Advance games run via external emulator invoked as subprocess.
-
-**Requirements:** mGBA, VBA-M, or similar CLI-capable emulator installed
-
-**Location:** `scripts/gba/` — contains launch and control scripts
-
-## Directory Structure
-
-```
-pokemon-emulator/
-├── SKILL.md           # This file
-├── scripts/
-│   ├── pyboy/         # GB/GBC emulation scripts (PyBoy)
-│   └── gba/           # GBA emulation scripts (subprocess)
-├── references/        # Game-specific configs, hotkey maps, ROM notes
-└── assets/            # Screenshots, save states generated during play
+game = PyBoyGame("pokemon_red.gb")
+game.press_button(A)
+x, y = game.get_position()
+screen = game.get_screen()  # np.array (144, 160, 3)
 ```
 
-## Usage
+### mGBA (GBA) — Recommended
 
-### Launch a Game
+Controls mGBA via PyAutoGUI (window focus + keypresses). HLE BIOS — no BIOS file needed.
 
-```
-python scripts/pyboy/launch.py <rom_path>
-python scripts/gba/launch.py <rom_path>
-```
+**Install:** Download from https://mgba.io (portable .7z, no install needed)
+**Script:** `scripts/mgba_control.py`
 
-### Save/Load State
+```python
+from mgba_control import GBAEmulator, BUTTONS
 
-```
-python scripts/pyboy/save_state.py <rom_path> <slot>
-python scripts/pyboy/load_state.py <rom_path> <slot>
-```
-
-### Screenshot
-
-```
-python scripts/pyboy/screenshot.py <rom_path> <output_path>
-python scripts/gba/screenshot.py <rom_path> <output_path>
+gba = GBAEmulator("pokemon_ruby.gba", mgba_path="C:/mgba/mGBA.exe")
+gba.press_button("A", frames=5)
+gba.press_button("START", frames=3)
+screen = gba.get_screen()  # PIL Image
+gba.stop()
 ```
 
-### List Save Slots
+### PyBoyAdvance (GBA) — Pure Python fallback
 
-```
-python scripts/pyboy/list_states.py <rom_path>
-```
+Pure Python GBA emulator. Requires GBA BIOS file.
+
+**Install:** `pip install pyboy-advance numpy pillow`
+**Script:** `scripts/gba_interface.py`
+
+## Key Scripts
+
+| Script | Platform | Notes |
+|--------|----------|-------|
+| `scripts/pyboy_interface.py` | GB/GBC | Full API: RAM read/write, position, party, battle state |
+| `scripts/mgba_control.py` | GBA | PyAutoGUI control of mGBA window |
+| `scripts/gba_interface.py` | GBA | PyBoyAdvance wrapper (needs BIOS) |
+
+## Common RAM Addresses (Pokemon Red/Blue)
+
+| Data | Address |
+|------|---------|
+| Player X | 0xD362 |
+| Player Y | 0xD361 |
+| Map Number | 0xD35E |
+| Money | 0xD47F |
+| Party Count | 0xD163 |
+| Badges | 0xD2F7 |
+| First Pokemon HP | 0xD16C |
+| Game State | 0xD057 (0=overworld, 1-6=battle) |
 
 ## Example Prompts
 
-- "Play Pokemon Yellow"
-- "Start Pokemon Gold and save my game"
-- "Launch Pokemon Emerald and take a screenshot"
-- "Load my Pokemon Red save state"
-- "Play Tetris on Game Boy"
-- "Start a GBA game — Pokemon FireRed"
-- "Capture a screenshot from my Pokemon save state"
+- "Play Pokemon Yellow on Game Boy"
+- "Start Pokemon Ruby and navigate the intro"
+- "Play Pokemon FireRed on GBA and show me the screen"
+- "Run Pokemon Gold, get my party info"
+- "Automate playing Tetris on Game Boy"
+- "Save my Pokemon Red game state"
 
 ## Notes
 
-- ROM files are not included — user must provide their own legally-owned ROMs
-- Save states are stored in `assets/` with the ROM name as prefix
-- Default hotkeys for GBA emulators depend on the emulator used; see `references/hotkeys.md`
+- **ROM files not included** — user must provide their own legally-owned ROMs
+- mGBA is the recommended GBA emulator (HLE, no BIOS required, fast)
+- PyBoy is the recommended GB/GBC emulator (pure Python, scriptable)
+- Save states stored in `assets/` directory
+- Screenshots saved as PNG in working directory
